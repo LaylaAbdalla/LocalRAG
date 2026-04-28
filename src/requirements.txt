@@ -1,0 +1,40 @@
+#NLP RAG Project — Python Dependencies
+
+#Web Framework
+fastapi[standard]==0.115.12
+uvicorn[standard]==0.34.2
+python-multipart==0.0.20
+
+#Configuration
+pydantic-settings==2.9.1
+
+#Async File Handling
+aiofiles==24.1.0
+
+#Document Parsing
+langchain==0.3.25
+langchain-community==0.3.24
+langchain-text-splitters==0.3.8
+pymupdf==1.25.5
+python-docx==1.1.2
+beautifulsoup4==4.13.4
+
+#MongoDB (Async Driver)
+motor==3.7.0
+
+#Vector Database (ChromaDB)
+chromadb==1.0.7
+
+#LLM & Embeddings
+openai==1.82.0
+sentence-transformers==4.1.0
+
+#Arabic NLP
+camel-tools==1.5.5
+
+#Frontend UI
+streamlit==1.45.1
+
+#Utilities
+python-dotenv==1.1.0
+httpx==0.28.1

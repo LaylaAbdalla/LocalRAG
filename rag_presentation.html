@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAG System — Interactive Educational Guide</title>
+<style>
+  :root {
+    --bg: #f8f7f4;
+    --surface: #ffffff;
+    --border: rgba(0,0,0,0.1);
+    --text: #1a1a1a;
+    --text-muted: #666;
+    --purple-50: #EEEDFE; --purple-200: #AFA9EC; --purple-600: #534AB7; --purple-800: #3C3489;
+    --teal-50: #E1F5EE; --teal-200: #5DCAA5; --teal-600: #0F6E56; --teal-800: #085041;
+    --coral-50: #FAECE7; --coral-200: #F0997B; --coral-600: #993C1D; --coral-800: #712B13;
+    --blue-50: #E6F1FB; --blue-200: #85B7EB; --blue-600: #185FA5; --blue-800: #0C447C;
+    --amber-50: #FAEEDA; --amber-200: #EF9F27; --amber-600: #854F0B;
+    --green-50: #EAF3DE; --green-200: #97C459; --green-600: #3B6D11;
+    --gray-50: #F1EFE8; --gray-200: #B4B2A9; --gray-600: #5F5E5A;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.7; }
+
+  /* NAV */
+  nav { position: sticky; top: 0; z-index: 100; background: rgba(255,255,255,0.95); backdrop-filter: blur(8px); border-bottom: 0.5px solid var(--border); padding: 0 1.5rem; display: flex; align-items: center; gap: 0; overflow-x: auto; }
+  nav a { display: inline-block; padding: 0.9rem 1rem; font-size: 13px; color: var(--text-muted); text-decoration: none; white-space: nowrap; border-bottom: 2px solid transparent; transition: color 0.2s, border-color 0.2s; }
+  nav a:hover, nav a.active { color: var(--purple-600); border-bottom-color: var(--purple-600); }
+  nav .brand { font-weight: 500; font-size: 14px; color: var(--text); margin-right: 1.5rem; padding: 0.9rem 0; border-bottom: none; cursor: default; }
+
+  /* LAYOUT */
+  .page { max-width: 900px; margin: 0 auto; padding: 3rem 1.5rem; }
+  section { margin-bottom: 5rem; scroll-margin-top: 60px; }
+  h1 { font-size: 2rem; font-weight: 500; margin-bottom: 0.5rem; }
+  h2 { font-size: 1.4rem; font-weight: 500; margin: 2rem 0 0.75rem; }
+  h3 { font-size: 1.1rem; font-weight: 500; margin: 1.5rem 0 0.5rem; }
+  p { margin-bottom: 1rem; color: var(--text); }
+  .lead { font-size: 1.1rem; color: var(--text-muted); margin-bottom: 2rem; }
+  .section-tag { display: inline-block; font-size: 12px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; color: var(--purple-600); background: var(--purple-50); padding: 3px 10px; border-radius: 20px; margin-bottom: 0.75rem; }
+  .divider { border: none; border-top: 0.5px solid var(--border); margin: 3rem 0; }
+
+  /* CARDS */
+  .card { background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 1rem; }
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+  .card-sm { background: var(--surface); border: 0.5px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; }
+  .card-icon { font-size: 22px; margin-bottom: 0.5rem; }
+  .card-title { font-size: 14px; font-weight: 500; margin-bottom: 0.25rem; }
+  .card-body { font-size: 13px; color: var(--text-muted); }
+
+  /* COMPARE TABLE */
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.5rem 0; }
+  .compare-box { border-radius: 12px; padding: 1.25rem; }
+  .compare-box.llm { background: var(--coral-50); border: 0.5px solid var(--coral-200); }
+  .compare-box.rag { background: var(--teal-50); border: 0.5px solid var(--teal-200); }
+  .compare-box h3 { font-size: 15px; font-weight: 500; margin-bottom: 0.75rem; }
+  .compare-box.llm h3 { color: var(--coral-600); }
+  .compare-box.rag h3 { color: var(--teal-600); }
+  .compare-box ul { padding-left: 1rem; font-size: 13px; }
+  .compare-box li { margin-bottom: 0.4rem; }
+
+  /* PIPELINE */
+  .pipeline { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 1.5rem 0; }
+  .pipe-step { padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; transition: transform 0.15s, opacity 0.3s; }
+  .pipe-step.idle { opacity: 0.4; }
+  .pipe-step.active { opacity: 1; transform: scale(1.05); box-shadow: 0 0 0 2px currentColor; }
+  .pipe-arrow { color: var(--gray-200); font-size: 16px; }
+  .ps-ingest { background: var(--purple-50); color: var(--purple-800); }
+  .ps-chunk { background: var(--blue-50); color: var(--blue-800); }
+  .ps-embed { background: var(--amber-50); color: var(--amber-600); }
+  .ps-store { background: var(--teal-50); color: var(--teal-800); }
+  .ps-search { background: var(--green-50); color: var(--green-600); }
+  .ps-prompt { background: var(--coral-50); color: var(--coral-800); }
+  .ps-generate { background: var(--gray-50); color: var(--gray-600); }
+
+  /* CODE BLOCKS */
+  .code-toggle { display: flex; align-items: center; justify-content: space-between; padding: 0.6rem 1rem; background: #1e1e2e; border-radius: 8px 8px 0 0; cursor: pointer; border: none; width: 100%; color: #cdd6f4; font-size: 12px; font-family: monospace; }
+  .code-toggle:hover { background: #252535; }
+  .code-body { display: none; background: #1e1e2e; border-radius: 0 0 8px 8px; overflow-x: auto; padding: 1rem; margin-bottom: 1.5rem; }
+  .code-body.open { display: block; }
+  pre { margin: 0; font-size: 12.5px; line-height: 1.6; }
+  code { font-family: 'SF Mono', 'Fira Code', Consolas, monospace; color: #cdd6f4; }
+  .kw { color: #cba6f7; }
+  .fn { color: #89b4fa; }
+  .str { color: #a6e3a1; }
+  .cm { color: #6c7086; }
+  .tp { color: #fab387; }
+  .num { color: #f38ba8; }
+
+  /* STEP PANELS */
+  .step-nav { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 1.5rem; }
+  .step-btn { padding: 6px 14px; border-radius: 20px; font-size: 13px; border: 0.5px solid var(--border); background: var(--surface); cursor: pointer; color: var(--text-muted); transition: all 0.2s; }
+  .step-btn.active { background: var(--purple-600); color: #fff; border-color: var(--purple-600); }
+  .step-panel { display: none; }
+  .step-panel.active { display: block; }
+
+  /* THEORY BLOCK */
+  .theory-block { background: var(--blue-50); border-left: 3px solid var(--blue-600); border-radius: 0 8px 8px 0; padding: 1rem 1.25rem; margin: 1rem 0; }
+  .impl-block { background: var(--green-50); border-left: 3px solid var(--green-600); border-radius: 0 8px 8px 0; padding: 1rem 1.25rem; margin: 1rem 0; }
+  .impl-block strong { color: var(--green-600); }
+  .theory-block strong { color: var(--blue-600); }
+
+  /* VISUAL BLOCKS */
+  .visual-box { background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; padding: 1.5rem; margin: 1rem 0; text-align: center; }
+  .flow-row { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 0.75rem 0; }
+  .flow-node { padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; }
+  .flow-arrow { color: var(--gray-200); font-size: 18px; }
+
+  /* ARCH DIAGRAM */
+  .arch { display: grid; grid-template-columns: 1fr 1px 1fr; gap: 0; margin: 1.5rem 0; }
+  .arch-col { padding: 1rem; }
+  .arch-divider { background: var(--border); }
+  .arch-stage { background: var(--gray-50); border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 0.75rem; font-size: 13px; border: 0.5px solid var(--border); }
+  .arch-stage-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.25rem; }
+  .arch-col-title { font-size: 13px; font-weight: 500; margin-bottom: 0.75rem; color: var(--text-muted); text-align: center; }
+
+  /* QUIZ */
+  .quiz-item { background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 1rem; }
+  .quiz-q { font-weight: 500; margin-bottom: 1rem; }
+  .quiz-options { display: flex; flex-direction: column; gap: 0.5rem; }
+  .quiz-opt { padding: 8px 14px; border-radius: 8px; border: 0.5px solid var(--border); cursor: pointer; font-size: 14px; background: var(--surface); transition: background 0.2s; text-align: left; }
+  .quiz-opt:hover { background: var(--gray-50); }
+  .quiz-opt.correct { background: var(--green-50); border-color: var(--green-200); color: var(--green-600); }
+  .quiz-opt.wrong { background: var(--coral-50); border-color: var(--coral-200); color: var(--coral-600); }
+  .quiz-feedback { margin-top: 0.75rem; font-size: 13px; padding: 0.75rem 1rem; border-radius: 8px; display: none; }
+  .quiz-feedback.show { display: block; }
+  .quiz-feedback.ok { background: var(--green-50); color: var(--green-600); }
+  .quiz-feedback.no { background: var(--coral-50); color: var(--coral-600); }
+
+  /* PITFALLS */
+  .pitfall { display: flex; gap: 1rem; align-items: flex-start; padding: 1rem; border-radius: 10px; margin-bottom: 0.75rem; background: var(--surface); border: 0.5px solid var(--border); }
+  .pitfall-icon { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+  .pitfall-icon.warn { background: var(--amber-50); }
+  .pitfall-icon.ok { background: var(--green-50); }
+  .pitfall-text strong { font-size: 14px; font-weight: 500; display: block; margin-bottom: 0.25rem; }
+  .pitfall-text span { font-size: 13px; color: var(--text-muted); }
+
+  /* EXERCISE */
+  .exercise { background: var(--purple-50); border: 0.5px solid var(--purple-200); border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 1rem; }
+  .exercise-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--purple-600); font-weight: 500; margin-bottom: 0.5rem; }
+  .exercise p { font-size: 14px; margin-bottom: 0.75rem; }
+  .exercise textarea { width: 100%; border: 0.5px solid var(--purple-200); border-radius: 8px; padding: 0.75rem; font-size: 13px; background: #fff; resize: vertical; min-height: 80px; font-family: inherit; }
+  .hint-btn { background: none; border: 0.5px solid var(--purple-200); color: var(--purple-600); padding: 5px 14px; border-radius: 20px; font-size: 12px; cursor: pointer; margin-top: 0.5rem; }
+  .hint-box { background: #fff; border-radius: 8px; padding: 0.75rem 1rem; font-size: 13px; color: var(--text-muted); margin-top: 0.5rem; display: none; }
+  .hint-box.show { display: block; }
+
+  /* BUTTONS */
+  .btn { display: inline-block; padding: 8px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; border: 0.5px solid var(--border); background: var(--surface); color: var(--text); transition: background 0.15s; }
+  .btn:hover { background: var(--gray-50); }
+  .btn-primary { background: var(--purple-600); color: #fff; border-color: var(--purple-600); }
+  .btn-primary:hover { background: var(--purple-800); }
+
+  /* SIMULATION */
+  #sim-log { background: #1e1e2e; color: #cdd6f4; border-radius: 10px; padding: 1rem 1.25rem; min-height: 80px; font-family: monospace; font-size: 12.5px; line-height: 1.8; margin-top: 1rem; white-space: pre-wrap; }
+  .sim-entry { opacity: 0; animation: fadeIn 0.4s forwards; }
+  @keyframes fadeIn { to { opacity: 1; } }
+
+  /* TRADEOFF SLIDER */
+  .tradeoff { margin: 1.5rem 0; }
+  .tradeoff-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+  .tradeoff-label { width: 120px; font-size: 13px; color: var(--text-muted); flex-shrink: 0; }
+  .tradeoff-bar { flex: 1; height: 6px; border-radius: 3px; background: var(--gray-50); overflow: hidden; border: 0.5px solid var(--border); }
+  .tradeoff-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
+
+  /* RESPONSIVE */
+  @media (max-width: 600px) {
+    .compare { grid-template-columns: 1fr; }
+    .arch { grid-template-columns: 1fr; }
+    .arch-divider { display: none; }
+    h1 { font-size: 1.5rem; }
+    nav .brand { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="brand">RAG Guide</span>
+  <a href="#intro" class="active">Introduction</a>
+  <a href="#arch">Architecture</a>
+  <a href="#deep">Deep Dive</a>
+  <a href="#sim">Simulation</a>
+  <a href="#opt">Optimization</a>
+  <a href="#quiz">Learning</a>
+</nav>
+
+<div class="page">
+
+<!-- ===== SECTION 1: INTRO ===== -->
+<section id="intro">
+  <span class="section-tag">Section 1</span>
+  <h1>Retrieval-Augmented Generation</h1>
+  <p class="lead">A hands-on guide to building intelligent, knowledge-grounded AI systems — with real implementation code.</p>
+
+  <h2>What is RAG?</h2>
+  <p>RAG (Retrieval-Augmented Generation) is a technique that combines a large language model (LLM) with a dynamic retrieval mechanism over an external knowledge base. Instead of relying purely on what the model learned during training, RAG <em>fetches relevant context at inference time</em> and feeds it to the model alongside the user's question.</p>
+
+  <div class="card-grid">
+    <div class="card-sm">
+      <div class="card-icon">📚</div>
+      <div class="card-title">External Knowledge</div>
+      <div class="card-body">Documents, PDFs, and text files stored outside the model — always up to date.</div>
+    </div>
+    <div class="card-sm">
+      <div class="card-icon">🔍</div>
+      <div class="card-title">Semantic Search</div>
+      <div class="card-body">Vector similarity retrieves the most relevant chunks for any user query.</div>
+    </div>
+    <div class="card-sm">
+      <div class="card-icon">🤖</div>
+      <div class="card-title">Grounded Generation</div>
+      <div class="card-body">The LLM generates answers based on retrieved facts — reducing hallucinations.</div>
+    </div>
+  </div>
+
+  <h2>Why do we need RAG?</h2>
+  <p>Standalone LLMs have a <strong>static knowledge cutoff</strong> — they cannot access information created after training. They also tend to hallucinate confidently when asked about topics not well-covered in training data. RAG solves both problems.</p>
+
+  <div class="compare">
+    <div class="compare-box llm">
+      <h3>Plain LLM</h3>
+      <ul>
+        <li>Knowledge frozen at training time</li>
+        <li>Cannot cite sources</li>
+        <li>Hallucinations on niche topics</li>
+        <li>Cannot access private documents</li>
+        <li>Expensive to retrain for updates</li>
+      </ul>
+    </div>
+    <div class="compare-box rag">
+      <h3>LLM + RAG</h3>
+      <ul>
+        <li>Knowledge updated via document uploads</li>
+        <li>Answers grounded in retrieved chunks</li>
+        <li>Reduced hallucinations</li>
+        <li>Works on private/proprietary data</li>
+        <li>No retraining required</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ===== SECTION 2: ARCHITECTURE ===== -->
+<section id="arch">
+  <span class="section-tag">Section 2</span>
+  <h1>System Architecture</h1>
+  <p class="lead">This project is a FastAPI-based RAG system with MongoDB for metadata, a vector database for embeddings, and a pluggable generation client.</p>
+
+  <div class="card">
+    <div class="arch">
+      <div class="arch-col">
+        <div class="arch-col-title">Ingestion Pipeline (offline)</div>
+        <div class="arch-stage"><div class="arch-stage-label">Step 1</div>File Upload → <code>POST /api/data/upload/{dir}</code></div>
+        <div class="arch-stage"><div class="arch-stage-label">Step 2</div>Text Chunking → <code>ProcessController</code></div>
+        <div class="arch-stage"><div class="arch-stage-label">Step 3</div>Store Chunks → <code>ChunkModel</code> (MongoDB)</div>
+        <div class="arch-stage"><div class="arch-stage-label">Step 4</div>Embed + Index → <code>POST /api/nlp/index/push</code></div>
+      </div>
+      <div class="arch-divider"></div>
+      <div class="arch-col">
+        <div class="arch-col-title">Query Pipeline (online)</div>
+        <div class="arch-stage"><div class="arch-stage-label">Step 1</div>User Query → <code>POST /api/nlp/index/answer</code></div>
+        <div class="arch-stage"><div class="arch-stage-label">Step 2</div>Embed Query → <code>embedding_client</code></div>
+        <div class="arch-stage"><div class="arch-stage-label">Step 3</div>Vector Search → <code>vectordb_client</code></div>
+        <div class="arch-stage"><div class="arch-stage-label">Step 4</div>Augment Prompt + Generate → <code>generation_client</code></div>
+      </div>
+    </div>
+  </div>
+
+  <h2>Data Flow</h2>
+  <div class="visual-box">
+    <div class="flow-row">
+      <div class="flow-node" style="background:var(--purple-50);color:var(--purple-800)">File Upload</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node" style="background:var(--blue-50);color:var(--blue-800)">Chunker</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node" style="background:var(--amber-50);color:var(--amber-600)">Embedder</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node" style="background:var(--teal-50);color:var(--teal-800)">Vector DB</div>
+    </div>
+    <div style="font-size:22px;color:var(--gray-200);margin:0.5rem 0;">↕</div>
+    <div class="flow-row">
+      <div class="flow-node" style="background:var(--gray-50);color:var(--gray-600)">User Query</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node" style="background:var(--amber-50);color:var(--amber-600)">Query Embed</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node" style="background:var(--green-50);color:var(--green-600)">Search Top-K</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node" style="background:var(--coral-50);color:var(--coral-800)">Prompt Build</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node" style="background:var(--gray-50);color:var(--gray-600)">LLM Answer</div>
+    </div>
+  </div>
+
+  <h2>Key Components</h2>
+  <div class="card-grid">
+    <div class="card-sm"><div class="card-title">BaseController</div><div class="card-body">Provides shared config: file paths, DB paths, app settings. All controllers inherit from it.</div></div>
+    <div class="card-sm"><div class="card-title">ProjectModel</div><div class="card-body">MongoDB collection for project metadata. Auto-creates a project on first access.</div></div>
+    <div class="card-sm"><div class="card-title">ChunkModel</div><div class="card-body">Stores text chunks with bulk-write support and paginated retrieval by project ID.</div></div>
+    <div class="card-sm"><div class="card-title">NlpController</div><div class="card-body">Orchestrates embedding, indexing, search, and RAG generation. Core intelligence layer.</div></div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ===== SECTION 3: DEEP DIVE ===== -->
+<section id="deep">
+  <span class="section-tag">Section 3</span>
+  <h1>Step-by-Step Deep Dive</h1>
+  <p class="lead">Click any step to explore the theory, implementation, and how they connect.</p>
+
+  <div class="step-nav">
+    <button class="step-btn active" onclick="showStep('ingest', this)">1. Data Ingestion</button>
+    <button class="step-btn" onclick="showStep('chunk', this)">2. Text Chunking</button>
+    <button class="step-btn" onclick="showStep('embed', this)">3. Embeddings</button>
+    <button class="step-btn" onclick="showStep('vdb', this)">4. Vector DB</button>
+    <button class="step-btn" onclick="showStep('search', this)">5. Similarity Search</button>
+    <button class="step-btn" onclick="showStep('prompt', this)">6. Prompt Augmentation</button>
+    <button class="step-btn" onclick="showStep('gen', this)">7. LLM Generation</button>
+  </div>
+
+  <!-- STEP: INGEST -->
+  <div id="step-ingest" class="step-panel active">
+    <h2>Data Ingestion</h2>
+    <div class="theory-block"><strong>Theory</strong><br>Data ingestion is the process of bringing raw documents (PDFs, text files) into the system and persisting them for later processing. The system must validate file types, ensure storage is organized by project, and associate files with a database record for traceability.</div>
+    <div class="visual-box">
+      <div class="flow-row">
+        <div class="flow-node" style="background:var(--purple-50);color:var(--purple-800)">Client uploads file</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node" style="background:var(--blue-50);color:var(--blue-800)">Validate type & size</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node" style="background:var(--teal-50);color:var(--teal-800)">Save to assets/files/{dir}</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node" style="background:var(--green-50);color:var(--green-600)">Create/fetch Project in MongoDB</div>
+      </div>
+    </div>
+    <button class="code-toggle" onclick="toggleCode(this)">
+      <span>data.py — upload_file() &amp; DataController.validate_file()</span>
+      <span>▸ Show code</span>
+    </button>
+    <div class="code-body">
+<pre><code><cm># data.py — upload endpoint</cm>
+<kw>@</kw><fn>data_router.post</fn>(<str>"/upload/{dir_name}"</str>)
+<kw>async def</kw> <fn>upload_file</fn>(request, dir_name, file, app_settings):
+    project_model = <fn>ProjectModel</fn>(db_client=request.app.mongodb)
+    project = <kw>await</kw> project_model.<fn>get_project_or_create_one</fn>(project_id=dir_name)
+
+    is_valid, error_msg = <fn>DataController</fn>().<fn>validate_file</fn>(file)
+    <kw>if not</kw> is_valid:
+        <kw>return</kw> <fn>JSONResponse</fn>(status_code=<num>400</num>, content={<str>"error_msg"</str>: error_msg})
+
+    file_path = <fn>FileController</fn>().<fn>get_file_path</fn>(dir_name) <cm># creates dir if missing</cm>
+    <kw>async with</kw> <fn>aiofiles.open</fn>(file_path, <str>'wb'</str>) <kw>as</kw> out_file:
+        <kw>while</kw> chunk := <kw>await</kw> file.<fn>read</fn>(app_settings.FILE_CHUNK_SIZE):
+            <kw>await</kw> out_file.<fn>write</fn>(chunk)
+
+<cm># DataController.py — validation</cm>
+<kw>def</kw> <fn>validate_file</fn>(<kw>self</kw>, file: <tp>UploadFile</tp>) -> <tp>bool</tp>:
+    <kw>if</kw> file.content_type <kw>not in</kw> <kw>self</kw>.app_settings.FILE_ALLOWED_EXTENSIONS:
+        <kw>return</kw> <kw>False</kw>, <str>"Invalid file type"</str>
+    <kw>if</kw> file.size > <kw>self</kw>.app_settings.FILE_MAX_SIZE_MB * <num>1024</num> * <num>1024</num>:
+        <kw>return</kw> <kw>False</kw>, <str>"File size exceeds limit"</str>
+    <kw>return</kw> <kw>True</kw>, <str>"success"</str></code></pre>
+    </div>
+    <div class="impl-block"><strong>Theory → Implementation</strong><br>The <code>DataController.validate_file()</code> enforces allowed extensions and max file size from config. The <code>FileController.get_file_path()</code> creates the project directory automatically. Files are streamed in chunks (not loaded into memory at once) using <code>aiofiles</code> — this is important for large files.</div>
+  </div>
+
+  <!-- STEP: CHUNK -->
+  <div id="step-chunk" class="step-panel">
+    <h2>Text Chunking</h2>
+    <div class="theory-block"><strong>Theory</strong><br>LLMs have limited context windows. Feeding an entire document as context is impractical and dilutes relevance. Chunking splits documents into overlapping segments of a fixed token/character size. Overlap between consecutive chunks prevents information loss at boundaries — a key detail missed in naive implementations.</div>
+    <div class="visual-box">
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:0.75rem">Document → overlapping chunks</div>
+      <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start;padding:0 1rem">
+        <div style="background:var(--blue-50);color:var(--blue-800);padding:6px 14px;border-radius:6px;font-size:12px;width:70%">Chunk 1: tokens 0–100</div>
+        <div style="background:var(--blue-50);color:var(--blue-800);padding:6px 14px;border-radius:6px;font-size:12px;width:70%;margin-left:60px;opacity:0.85">Chunk 2: tokens 80–180 ← 20-token overlap</div>
+        <div style="background:var(--blue-50);color:var(--blue-800);padding:6px 14px;border-radius:6px;font-size:12px;width:70%;margin-left:120px;opacity:0.7">Chunk 3: tokens 160–260 ← 20-token overlap</div>
+      </div>
+    </div>
+    <button class="code-toggle" onclick="toggleCode(this)">
+      <span>ProcessController.py — process_files()</span>
+      <span>▸ Show code</span>
+    </button>
+    <div class="code-body">
+<pre><code><kw>from</kw> langchain.text_splitter <kw>import</kw> RecursiveCharacterTextSplitter
+
+<kw>def</kw> <fn>process_files</fn>(<kw>self</kw>, file_content, file_name,
+                   chunk_size: <tp>int</tp>=<num>100</num>, overlap: <tp>int</tp>=<num>20</num>):
+    text_splitter = <fn>RecursiveCharacterTextSplitter</fn>(
+        chunk_size=chunk_size,   <cm># max chars per chunk</cm>
+        chunk_overlap=overlap,   <cm># chars shared with next chunk</cm>
+        length_function=len
+    )
+    chunks = text_splitter.<fn>create_documents</fn>(
+        [doc.page_content <kw>for</kw> doc <kw>in</kw> file_content],
+        metadatas=[doc.metadata <kw>for</kw> doc <kw>in</kw> file_content]
+    )
+    <kw>return</kw> chunks
+
+<kw>def</kw> <fn>get_file_loader</fn>(<kw>self</kw>, file_name: <tp>str</tp>):
+    ext = <kw>self</kw>.<fn>get_file_extension</fn>(file_name)
+    <kw>if</kw> ext <kw>in</kw> [<str>'.txt'</str>]:
+        <kw>return</kw> <fn>TextLoader</fn>(file_path)
+    <kw>if</kw> ext <kw>in</kw> [<str>'.pdf'</str>]:
+        <kw>return</kw> <fn>PyMuPDFLoader</fn>(file_path)  <cm># preserves layout</cm>
+    <kw>return None</kw></code></pre>
+    </div>
+    <div class="impl-block"><strong>Theory → Implementation</strong><br><code>RecursiveCharacterTextSplitter</code> from LangChain tries to split on paragraph breaks first, then sentences, then words — preserving semantic coherence. The <code>chunk_size</code> and <code>overlap</code> are configurable per API call. <code>PyMuPDFLoader</code> is used for PDFs to preserve text order across pages.</div>
+  </div>
+
+  <!-- STEP: EMBED -->
+  <div id="step-embed" class="step-panel">
+    <h2>Embeddings</h2>
+    <div class="theory-block"><strong>Theory</strong><br>An embedding model converts text into a dense numeric vector (e.g. 768 or 1536 dimensions) that captures semantic meaning. Two semantically similar sentences — even if worded differently — will have vectors that are close in high-dimensional space. This enables "meaning-aware" search, unlike keyword matching.</div>
+    <div class="visual-box">
+      <div class="flow-row">
+        <div class="flow-node" style="background:var(--purple-50);color:var(--purple-800)">"The cat sat on the mat"</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node" style="background:var(--amber-50);color:var(--amber-600)">Embedding Model</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node" style="background:var(--teal-50);color:var(--teal-800)">[0.23, -0.51, 0.88 ...]</div>
+      </div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:0.75rem">Vector of ~768–1536 floats representing meaning</div>
+    </div>
+    <button class="code-toggle" onclick="toggleCode(this)">
+      <span>NlpController.py — push_data_to_index() embedding loop</span>
+      <span>▸ Show code</span>
+    </button>
+    <div class="code-body">
+<pre><code><kw>def</kw> <fn>push_data_to_index</fn>(<kw>self</kw>, project, chunks, do_reset=<num>0</num>):
+    collection_name = <kw>self</kw>.<fn>create_collection_name</fn>(project.id)
+
+    text  = [c.chunk_text     <kw>for</kw> c <kw>in</kw> chunks]
+    metadata = [c.chunk_metadata <kw>for</kw> c <kw>in</kw> chunks]
+
+    <cm># embed each chunk as a "passage" (asymmetric embedding)</cm>
+    vectors = [
+        <kw>self</kw>.embedding_client.<fn>embed</fn>(text=t, doc_type=<str>"passage"</str>)
+        <kw>for</kw> t <kw>in</kw> text
+    ]
+
+    <kw>self</kw>.vectordb_client.<fn>create_collection</fn>(
+        collection_name,
+        <kw>self</kw>.embedding_client.embedding_size  <cm># dimension of vectors</cm>
+    )
+    <kw>self</kw>.vectordb_client.<fn>add_documents</fn>(
+        collection_name=collection_name,
+        texts=text,
+        vectors=vectors,
+        metadata=metadata
+    )</code></pre>
+    </div>
+    <div class="impl-block"><strong>Theory → Implementation</strong><br>Note the <code>doc_type="passage"</code> flag — many modern embedding models (like E5, BGE) use <em>asymmetric embedding</em>: passages and queries are embedded differently to improve retrieval quality. The vector dimension is stored as <code>embedding_size</code> and used when creating the vector DB collection.</div>
+  </div>
+
+  <!-- STEP: VDB -->
+  <div id="step-vdb" class="step-panel">
+    <h2>Vector Database</h2>
+    <div class="theory-block"><strong>Theory</strong><br>A vector database (e.g. Qdrant, Pinecone, Chroma) is purpose-built for storing and querying high-dimensional vectors efficiently. Unlike a relational DB, it supports Approximate Nearest Neighbor (ANN) search — finding the top-K vectors most similar to a query vector in milliseconds, even at millions of entries.</div>
+    <div class="visual-box">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;max-width:400px;margin:0 auto">
+        <div style="background:var(--teal-50);border-radius:8px;padding:8px;text-align:center;font-size:12px;color:var(--teal-800)">Chunk A<br><span style="font-size:10px;color:var(--teal-600)">[0.2, 0.9, ...]</span></div>
+        <div style="background:var(--teal-50);border-radius:8px;padding:8px;text-align:center;font-size:12px;color:var(--teal-800)">Chunk B<br><span style="font-size:10px;color:var(--teal-600)">[0.7, 0.1, ...]</span></div>
+        <div style="background:var(--teal-50);border-radius:8px;padding:8px;text-align:center;font-size:12px;color:var(--teal-800);outline:2px solid var(--teal-200)">Chunk C<br><span style="font-size:10px;color:var(--teal-600)">[0.3, 0.8, ...]</span></div>
+        <div style="background:var(--teal-50);border-radius:8px;padding:8px;text-align:center;font-size:12px;color:var(--teal-800)">Chunk D<br><span style="font-size:10px;color:var(--teal-600)">[0.5, 0.4, ...]</span></div>
+        <div style="background:var(--amber-50);border-radius:8px;padding:8px;text-align:center;font-size:12px;color:var(--amber-600)">Query<br><span style="font-size:10px">[0.3, 0.8, ...]</span></div>
+        <div style="background:var(--teal-50);border-radius:8px;padding:8px;text-align:center;font-size:12px;color:var(--teal-800)">Chunk E<br><span style="font-size:10px;color:var(--teal-600)">[0.1, 0.3, ...]</span></div>
+      </div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:0.75rem">Query → nearest neighbor = Chunk C (cosine similarity)</div>
+    </div>
+    <button class="code-toggle" onclick="toggleCode(this)">
+      <span>NlpController.py — collection management</span>
+      <span>▸ Show code</span>
+    </button>
+    <div class="code-body">
+<pre><code><kw>def</kw> <fn>create_collection_name</fn>(<kw>self</kw>, project_id):
+    <kw>return</kw> <fn>f</fn><str>"collection_{project_id}"</str>.<fn>strip</fn>()
+
+<kw>def</kw> <fn>reset_vector_db_collection</fn>(<kw>self</kw>, project: <tp>Project</tp>):
+    collection_name = <kw>self</kw>.<fn>create_collection_name</fn>(project.id)
+    <kw>return self</kw>.vectordb_client.<fn>delete_collection</fn>(collection_name)
+
+<kw>def</kw> <fn>get_vector_db_collection_info</fn>(<kw>self</kw>, project: <tp>Project</tp>):
+    collection_name = <kw>self</kw>.<fn>create_collection_name</fn>(project.id)
+    <kw>return self</kw>.vectordb_client.<fn>is_collection_exists</fn>(collection_name)
+
+<cm># Each project gets its own isolated collection</cm>
+<cm># Naming: "collection_&lt;mongo_object_id&gt;"</cm></code></pre>
+    </div>
+    <div class="impl-block"><strong>Theory → Implementation</strong><br>Each project gets its own isolated vector collection, named from the MongoDB project <code>_id</code>. This is multi-tenancy by design — different users' documents don't interfere. The <code>do_reset</code> flag triggers a full collection delete before re-indexing, allowing clean re-ingestion.</div>
+  </div>
+
+  <!-- STEP: SEARCH -->
+  <div id="step-search" class="step-panel">
+    <h2>Similarity Search</h2>
+    <div class="theory-block"><strong>Theory</strong><br>At query time, the user's question is embedded into a vector using the same model (but with <code>doc_type="query"</code>). The vector DB then finds the top-K most similar stored vectors using cosine similarity or dot product. These corresponding chunks become the context for the LLM.</div>
+    <div class="visual-box">
+      <div class="flow-row">
+        <div class="flow-node" style="background:var(--gray-50);color:var(--gray-600)">User: "What is X?"</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node" style="background:var(--amber-50);color:var(--amber-600)">embed(query)</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node" style="background:var(--green-50);color:var(--green-600)">search top-K vectors</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node" style="background:var(--purple-50);color:var(--purple-800)">Return chunk texts</div>
+      </div>
+    </div>
+    <button class="code-toggle" onclick="toggleCode(this)">
+      <span>NlpController.py — search_by_vector()</span>
+      <span>▸ Show code</span>
+    </button>
+    <div class="code-body">
+<pre><code><kw>def</kw> <fn>search_by_vector</fn>(<kw>self</kw>, project: <tp>Project</tp>,
+                      text: <tp>str</tp>, top_k: <tp>int</tp>=<num>5</num>) -> <tp>list</tp>:
+    collection_name = <kw>self</kw>.<fn>create_collection_name</fn>(project.id)
+
+    <cm># Note: doc_type="query" — asymmetric vs "passage" at index time</cm>
+    query_vector = <kw>self</kw>.embedding_client.<fn>embed</fn>(
+        text=text, doc_type=<str>"query"</str>
+    )
+
+    results = <kw>self</kw>.vectordb_client.<fn>search_by_vector</fn>(
+        collection_name=collection_name,
+        query_vector=query_vector,
+        top_k=top_k
+    )
+
+    <kw>if not</kw> results:
+        <kw>return False</kw>
+    <kw>return</kw> results  <cm># list of scored chunk objects</cm>
+
+<cm># nlp.py — exposed via API with configurable top_k</cm>
+<kw>@</kw><fn>nlp_router.post</fn>(<str>"index/search/{project_id}"</str>)
+<kw>async def</kw> <fn>search_by_vector</fn>(request, project_id, search_request):
+    results = nlp_controller.<fn>search_by_vector</fn>(
+        project=project,
+        text=search_request.text,
+        top_k=search_request.top_k
+    )</code></pre>
+    </div>
+    <div class="impl-block"><strong>Theory → Implementation</strong><br>The <code>top_k</code> parameter is user-controlled per request — more results provide broader context but increase prompt length. The asymmetric embedding (<code>doc_type</code>) is crucial: query vectors and passage vectors live in slightly different representation spaces optimized for retrieval accuracy.</div>
+  </div>
+
+  <!-- STEP: PROMPT -->
+  <div id="step-prompt" class="step-panel">
+    <h2>Prompt Augmentation</h2>
+    <div class="theory-block"><strong>Theory</strong><br>Prompt augmentation (also called context stuffing or grounding) is the process of constructing a structured prompt that includes: (1) a system instruction defining the assistant's role, (2) the retrieved document chunks as numbered references, (3) the user's original question, and (4) a footer instruction telling the model how to use the context.</div>
+    <div class="visual-box">
+      <div style="text-align:left;max-width:500px;margin:0 auto;font-size:12px;font-family:monospace">
+        <div style="background:var(--purple-50);color:var(--purple-800);padding:6px 10px;border-radius:6px;margin-bottom:4px">[SYSTEM] You are a helpful assistant...</div>
+        <div style="background:var(--blue-50);color:var(--blue-800);padding:6px 10px;border-radius:6px;margin-bottom:4px">[DOC 1] Retrieved chunk text...</div>
+        <div style="background:var(--blue-50);color:var(--blue-800);padding:6px 10px;border-radius:6px;margin-bottom:4px">[DOC 2] Retrieved chunk text...</div>
+        <div style="background:var(--amber-50);color:var(--amber-600);padding:6px 10px;border-radius:6px;margin-bottom:4px">[USER QUERY] What is X?</div>
+        <div style="background:var(--gray-50);color:var(--gray-600);padding:6px 10px;border-radius:6px">[FOOTER] Answer using only the above documents.</div>
+      </div>
+    </div>
+    <button class="code-toggle" onclick="toggleCode(this)">
+      <span>NlpController.py — answer_rag_question() prompt construction</span>
+      <span>▸ Show code</span>
+    </button>
+    <div class="code-body">
+<pre><code><kw>def</kw> <fn>answer_rag_question</fn>(<kw>self</kw>, project, query, top_k=<num>5</num>):
+    relevant_docs = <kw>self</kw>.<fn>search_by_vector</fn>(project, query, top_k)
+
+    <cm># Load prompt templates from template_parser</cm>
+    system_prompt   = <kw>self</kw>.template_parser.<fn>get</fn>(<str>"rag"</str>, <str>"system_prompt"</str>)
+    footer_prompt   = <kw>self</kw>.template_parser.<fn>get</fn>(<str>"rag"</str>, <str>"footer_template_prompt"</str>)
+
+    <cm># Build numbered document section from retrieved chunks</cm>
+    documents_prompt = <str>"\n"</str>.<fn>join</fn>([
+        <kw>self</kw>.template_parser.<fn>get</fn>(<str>"rag"</str>, <str>"document_prompt"</str>, {
+            <str>"doc_id"</str>: idx+<num>1</num>,
+            <str>"text"</str>: doc.text,
+        })
+        <kw>for</kw> idx, doc <kw>in</kw> <fn>enumerate</fn>(relevant_docs)
+    ])
+
+    <cm># Combine all parts into final prompt</cm>
+    full_prompt = <str>"\n\n"</str>.<fn>join</fn>([
+        documents_prompt,
+        <fn>f</fn><str>"## User Query:\n{query}"</str>,
+        footer_prompt
+    ])
+
+    chat_history = [<kw>self</kw>.generation_client.<fn>construct_prompt</fn>(
+        query=system_prompt, role=<str>"system"</str>
+    )]
+    answer = <kw>self</kw>.generation_client.<fn>generate_response</fn>(
+        prompt=full_prompt, chat_history=chat_history
+    )
+    <kw>return</kw> answer, full_prompt, chat_history</code></pre>
+    </div>
+    <div class="impl-block"><strong>Theory → Implementation</strong><br>The system uses a template engine (<code>template_parser</code>) to separate prompt text from code — a best practice for prompt management. The chat history starts with the system prompt as a <code>"system"</code> role message. The full prompt and history are returned to the API caller for transparency and debugging.</div>
+  </div>
+
+  <!-- STEP: GEN -->
+  <div id="step-gen" class="step-panel">
+    <h2>LLM Generation</h2>
+    <div class="theory-block"><strong>Theory</strong><br>The final step passes the augmented prompt to an LLM (GPT-4, Claude, Mistral, etc.) for answer generation. The key difference from vanilla LLM usage: the model is explicitly instructed to answer from the provided documents only. This "grounding" constraint dramatically reduces hallucinations and keeps answers factually anchored to your data.</div>
+    <div class="visual-box">
+      <div class="flow-row">
+        <div class="flow-node" style="background:var(--coral-50);color:var(--coral-800)">Augmented Prompt</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node" style="background:var(--gray-50);color:var(--gray-600)">LLM API Call</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node" style="background:var(--green-50);color:var(--green-600)">Grounded Answer</div>
+      </div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:0.75rem">Answer returned with full_prompt + chat_history for audit</div>
+    </div>
+    <button class="code-toggle" onclick="toggleCode(this)">
+      <span>nlp.py — answer_rag() API endpoint</span>
+      <span>▸ Show code</span>
+    </button>
+    <div class="code-body">
+<pre><code><kw>@</kw><fn>nlp_router.post</fn>(<str>"/index/answer/{project_id}"</str>)
+<kw>async def</kw> <fn>answer_rag</fn>(request, project_id, search_request):
+    project = <kw>await</kw> project_model.<fn>get_project_or_create_one</fn>(project_id)
+
+    nlp_controller = <fn>NlpController</fn>(
+        vectordb_client=request.app.vector_db_provider,
+        generation_client=request.app.generation_provider,
+        embedding_client=request.app.embedding_provider,
+        template_parser=request.app.template_parser
+    )
+
+    answer, full_prompt, chat_history = nlp_controller.<fn>answer_rag_question</fn>(
+        project=project,
+        query=search_request.text,
+        top_k=search_request.top_k
+    )
+
+    <kw>if not</kw> answer:
+        <kw>return</kw> <fn>JSONResponse</fn>(status_code=<num>400</num>, content={<str>"results"</str>: <str>"Failed"</str>})
+
+    <kw>return</kw> <fn>JSONResponse</fn>(status_code=<num>200</num>, content={
+        <str>"answer"</str>: answer,
+        <str>"full_prompt"</str>: full_prompt,     <cm># for debugging/transparency</cm>
+        <str>"chat_history"</str>: chat_history    <cm># full conversation context</cm>
+    })</code></pre>
+    </div>
+    <div class="impl-block"><strong>Theory → Implementation</strong><br>All four provider clients (<code>vectordb_client</code>, <code>generation_client</code>, <code>embedding_client</code>, <code>template_parser</code>) are injected from <code>request.app</code> — set up at startup via FastAPI's lifespan context. This dependency injection pattern makes each provider swappable (e.g. swap OpenAI for a local model) without changing controller code.</div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ===== SECTION 4: SIMULATION ===== -->
+<section id="sim">
+  <span class="section-tag">Section 4</span>
+  <h1>End-to-End Flow Simulation</h1>
+  <p class="lead">Watch a user query travel through the full RAG pipeline, step by step.</p>
+
+  <div class="card" style="margin-bottom:1.5rem">
+    <label style="font-size:13px;color:var(--text-muted);display:block;margin-bottom:0.5rem">Simulated query:</label>
+    <input id="sim-query" type="text" value="What is the chunking strategy used in this project?" style="width:100%;padding:8px 12px;border:0.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;background:var(--bg)">
+  </div>
+
+  <div class="pipeline" id="sim-pipeline">
+    <div class="pipe-step ps-ingest idle" id="ps0">File Loaded</div>
+    <span class="pipe-arrow">→</span>
+    <div class="pipe-step ps-chunk idle" id="ps1">Chunked</div>
+    <span class="pipe-arrow">→</span>
+    <div class="pipe-step ps-embed idle" id="ps2">Embedded</div>
+    <span class="pipe-arrow">→</span>
+    <div class="pipe-step ps-store idle" id="ps3">Stored in VDB</div>
+    <span class="pipe-arrow">→</span>
+    <div class="pipe-step ps-search idle" id="ps4">Query Searched</div>
+    <span class="pipe-arrow">→</span>
+    <div class="pipe-step ps-prompt idle" id="ps5">Prompt Built</div>
+    <span class="pipe-arrow">→</span>
+    <div class="pipe-step ps-generate idle" id="ps6">Answer Generated</div>
+  </div>
+
+  <button class="btn btn-primary" onclick="runSimulation()" id="sim-btn">▶ Run Simulation</button>
+
+  <div id="sim-log">Simulation output will appear here...</div>
+</section>
+
+<hr class="divider">
+
+<!-- ===== SECTION 5: OPTIMIZATION ===== -->
+<section id="opt">
+  <span class="section-tag">Section 5</span>
+  <h1>Optimization & Pitfalls</h1>
+  <p class="lead">Understanding tradeoffs is key to building production-grade RAG systems.</p>
+
+  <h2>Chunk size tradeoffs</h2>
+  <p>Drag the slider to see how chunk size affects system properties.</p>
+  <div style="margin:1rem 0 0.5rem;display:flex;align-items:center;gap:1rem">
+    <label style="font-size:13px;color:var(--text-muted)">Chunk size:</label>
+    <input type="range" min="1" max="10" value="5" id="chunk-slider" oninput="updateChunkViz(this.value)" style="flex:1">
+    <span id="chunk-val" style="font-size:14px;font-weight:500;min-width:60px">Medium</span>
+  </div>
+  <div class="tradeoff">
+    <div class="tradeoff-row"><span class="tradeoff-label">Precision</span><div class="tradeoff-bar"><div class="tradeoff-fill" id="tr-precision" style="background:var(--teal-200);width:70%"></div></div></div>
+    <div class="tradeoff-row"><span class="tradeoff-label">Context coverage</span><div class="tradeoff-bar"><div class="tradeoff-fill" id="tr-coverage" style="background:var(--blue-200);width:40%"></div></div></div>
+    <div class="tradeoff-row"><span class="tradeoff-label">Retrieval speed</span><div class="tradeoff-bar"><div class="tradeoff-fill" id="tr-speed" style="background:var(--green-200);width:80%"></div></div></div>
+    <div class="tradeoff-row"><span class="tradeoff-label">Prompt token cost</span><div class="tradeoff-bar"><div class="tradeoff-fill" id="tr-cost" style="background:var(--coral-200);width:30%"></div></div></div>
+  </div>
+
+  <h2>Common pitfalls & best practices</h2>
+  <div class="pitfall">
+    <div class="pitfall-icon warn">⚠</div>
+    <div class="pitfall-text"><strong>Not resetting the collection before re-indexing</strong><span>If <code>do_reset=0</code> and you re-index the same document, you get duplicate chunks. Always set <code>do_reset=1</code> when re-processing a project.</span></div>
+  </div>
+  <div class="pitfall">
+    <div class="pitfall-icon warn">⚠</div>
+    <div class="pitfall-text"><strong>Using the same embed type for queries and passages</strong><span>Asymmetric models like E5 require <code>doc_type="query"</code> at search time. Using <code>"passage"</code> for queries degrades recall.</span></div>
+  </div>
+  <div class="pitfall">
+    <div class="pitfall-icon warn">⚠</div>
+    <div class="pitfall-text"><strong>Fetching all chunks at once</strong><span>The code correctly paginates with <code>page_size=50</code> in the push endpoint. Loading millions of chunks at once causes memory exhaustion.</span></div>
+  </div>
+  <div class="pitfall">
+    <div class="pitfall-icon ok">✓</div>
+    <div class="pitfall-text"><strong>Bulk-write for chunk insertion</strong><span>The <code>ChunkModel.insert_many_chunks()</code> method uses MongoDB's <code>bulk_write</code> with batching — significantly faster than inserting one-by-one.</span></div>
+  </div>
+  <div class="pitfall">
+    <div class="pitfall-icon ok">✓</div>
+    <div class="pitfall-text"><strong>Provider injection via FastAPI app state</strong><span>All external clients (LLM, embedder, vector DB) are attached to <code>request.app</code> at startup, making them swappable and testable.</span></div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ===== SECTION 6: INTERACTIVE LEARNING ===== -->
+<section id="quiz">
+  <span class="section-tag">Section 6</span>
+  <h1>Interactive Learning</h1>
+  <p class="lead">Test your understanding of RAG concepts from this project.</p>
+
+  <h2>Quiz</h2>
+
+  <!-- Q1 -->
+  <div class="quiz-item" id="q1">
+    <div class="quiz-q">1. Why does NlpController embed chunks with <code>doc_type="passage"</code> but queries with <code>doc_type="query"</code>?</div>
+    <div class="quiz-options">
+      <button class="quiz-opt" onclick="answer('q1', this, false, 'Not quite — it\\'s about representation, not storage.')">It saves storage space in the vector DB</button>
+      <button class="quiz-opt" onclick="answer('q1', this, true, 'Correct! Asymmetric embedding models encode documents and queries into different representation spaces to improve retrieval accuracy.')">Asymmetric embedding models use different representations for queries vs. documents</button>
+      <button class="quiz-opt" onclick="answer('q1', this, false, 'Not the primary reason — the model can handle both.')">The LLM cannot process passage-type embeddings</button>
+      <button class="quiz-opt" onclick="answer('q1', this, false, 'Similarity is always computed regardless of doc_type.')">It skips similarity computation for performance</button>
+    </div>
+    <div class="quiz-feedback" id="q1-fb"></div>
+  </div>
+
+  <!-- Q2 -->
+  <div class="quiz-item" id="q2">
+    <div class="quiz-q">2. In <code>ChunkModel.insert_many_chunks()</code>, why is <code>bulk_write</code> used instead of calling <code>insert_one</code> in a loop?</div>
+    <div class="quiz-options">
+      <button class="quiz-opt" onclick="answer('q2', this, true, 'Correct! Bulk operations reduce round-trips to the database, dramatically improving throughput for large datasets.')">Bulk operations reduce network round-trips and are faster for large batches</button>
+      <button class="quiz-opt" onclick="answer('q2', this, false, 'bulk_write does not bypass validation.')">It bypasses document validation for speed</button>
+      <button class="quiz-opt" onclick="answer('q2', this, false, 'MongoDB supports both for duplicate detection.')">MongoDB cannot detect duplicates with insert_one</button>
+      <button class="quiz-opt" onclick="answer('q2', this, false, 'It does not change the data model.')">It stores chunks in a different collection format</button>
+    </div>
+    <div class="quiz-feedback" id="q2-fb"></div>
+  </div>
+
+  <!-- Q3 -->
+  <div class="quiz-item" id="q3">
+    <div class="quiz-q">3. What problem does the <code>chunk_overlap</code> parameter in <code>RecursiveCharacterTextSplitter</code> solve?</div>
+    <div class="quiz-options">
+      <button class="quiz-opt" onclick="answer('q3', this, false, 'Overlap doesn\\'t help with embeddings.')">It makes embeddings more accurate</button>
+      <button class="quiz-opt" onclick="answer('q3', this, false, 'Vector DB storage is unaffected by overlap.')">It reduces vector database storage requirements</button>
+      <button class="quiz-opt" onclick="answer('q3', this, true, 'Correct! Overlap ensures that information at chunk boundaries is captured in at least one complete chunk, preventing context loss.')">It prevents information loss at chunk boundaries</button>
+      <button class="quiz-opt" onclick="answer('q3', this, false, 'LLM speed is unrelated to chunking overlap.')">It speeds up LLM inference time</button>
+    </div>
+    <div class="quiz-feedback" id="q3-fb"></div>
+  </div>
+
+  <!-- Q4 -->
+  <div class="quiz-item" id="q4">
+    <div class="quiz-q">4. The <code>answer_rag</code> endpoint returns <code>full_prompt</code> and <code>chat_history</code> alongside the answer. What is the primary benefit of this?</div>
+    <div class="quiz-options">
+      <button class="quiz-opt" onclick="answer('q4', this, false, 'The API is stateless — history is not cached.')">It caches the conversation for the next request</button>
+      <button class="quiz-opt" onclick="answer('q4', this, true, 'Correct! Returning the full prompt and history enables debugging, prompt auditing, and observability — you can see exactly what context the model used.')">It enables debugging, auditing, and observability of what context was used</button>
+      <button class="quiz-opt" onclick="answer('q4', this, false, 'Those fields are not used for compression.')">It compresses the answer for faster transmission</button>
+      <button class="quiz-opt" onclick="answer('q4', this, false, 'full_prompt is for transparency, not reranking.')">It allows the client to rerank the retrieved documents</button>
+    </div>
+    <div class="quiz-feedback" id="q4-fb"></div>
+  </div>
+
+  <!-- Q5 -->
+  <div class="quiz-item" id="q5">
+    <div class="quiz-q">5. How does <code>ProjectModel.get_project_or_create_one()</code> follow the "upsert" pattern, and why is this useful for an API?</div>
+    <div class="quiz-options">
+      <button class="quiz-opt" onclick="answer('q5', this, false, 'No explicit merge happens here.')">It merges incoming data with existing records</button>
+      <button class="quiz-opt" onclick="answer('q5', this, false, 'It does not lock the collection.')">It locks the MongoDB collection to prevent race conditions</button>
+      <button class="quiz-opt" onclick="answer('q5', this, true, 'Correct! The upsert pattern (insert if not exist, return existing if it does) makes endpoints idempotent — callers don\\'t need to check existence first.')">It creates the project if missing, returns existing if found — making the endpoint idempotent</button>
+      <button class="quiz-opt" onclick="answer('q5', this, false, 'It queries only once — not twice.')">It queries the database twice for reliability</button>
+    </div>
+    <div class="quiz-feedback" id="q5-fb"></div>
+  </div>
+
+  <h2 style="margin-top:2.5rem">Mini Exercises</h2>
+
+  <div class="exercise">
+    <div class="exercise-label">Exercise 1 — Chunking</div>
+    <p>The current <code>ProcessController</code> only supports <code>.txt</code> and <code>.pdf</code> files. How would you extend it to support <code>.docx</code> files? Which class would you modify?</p>
+    <textarea placeholder="Write your answer here..."></textarea>
+    <button class="hint-btn" onclick="toggleHint(this)">Show hint</button>
+    <div class="hint-box">Add a new condition in <code>get_file_loader()</code> checking for <code>.docx</code> extension. Use LangChain's <code>Docx2txtLoader</code> or <code>UnstructuredWordDocumentLoader</code>. No other class needs changing — the file loader pattern isolates format-specific logic.</div>
+  </div>
+
+  <div class="exercise">
+    <div class="exercise-label">Exercise 2 — Retrieval quality</div>
+    <p>A user reports that RAG answers are often missing relevant information. Given that <code>top_k=5</code> is the default, what are two things you could change in the codebase to improve recall?</p>
+    <textarea placeholder="Write your answer here..."></textarea>
+    <button class="hint-btn" onclick="toggleHint(this)">Show hint</button>
+    <div class="hint-box">1. Increase <code>top_k</code> (more chunks = more context, but longer prompt). 2. Reduce <code>chunk_size</code> so chunks are more focused on single ideas, improving relevance. 3. Experiment with a better embedding model with higher dimensionality.</div>
+  </div>
+
+  <div class="exercise">
+    <div class="exercise-label">Exercise 3 — Architecture</div>
+    <p>The <code>NlpController</code> receives clients via constructor injection. What testing benefit does this give you, and how would you write a unit test for <code>search_by_vector()</code>?</p>
+    <textarea placeholder="Write your answer here..."></textarea>
+    <button class="hint-btn" onclick="toggleHint(this)">Show hint</button>
+    <div class="hint-box">Dependency injection allows mocking: create mock objects for <code>embedding_client</code> and <code>vectordb_client</code> that return predictable values. Pass them to <code>NlpController()</code> in your test. This lets you test the controller logic in isolation without a real vector database or embedding API.</div>
+  </div>
+
+</section>
+
+</div><!-- end .page -->
+
+<script>
+// NAV ACTIVE STATE
+const sections = document.querySelectorAll('section[id]');
+const navLinks = document.querySelectorAll('nav a');
+window.addEventListener('scroll', () => {
+  let current = '';
+  sections.forEach(s => { if (window.scrollY >= s.offsetTop - 100) current = s.id; });
+  navLinks.forEach(a => {
+    a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+  });
+});
+
+// CODE TOGGLE
+function toggleCode(btn) {
+  const body = btn.nextElementSibling;
+  const isOpen = body.classList.toggle('open');
+  btn.querySelector('span:last-child').textContent = isOpen ? '▾ Hide code' : '▸ Show code';
+}
+
+// STEP NAVIGATION
+function showStep(id, btn) {
+  document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.step-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('step-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// SIMULATION
+const simSteps = [
+  { id: 'ps0', label: 'Loading file content', detail: '→ ProcessController.get_file_content("document.pdf")\n  Loader: PyMuPDFLoader | Pages: 12' },
+  { id: 'ps1', label: 'Chunking document', detail: '→ RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)\n  Result: 47 chunks created' },
+  { id: 'ps2', label: 'Generating embeddings', detail: '→ embedding_client.embed(text=chunk, doc_type="passage")\n  Embedding dim: 768 | Model: text-embedding-3-small' },
+  { id: 'ps3', label: 'Storing in Vector DB', detail: '→ vectordb_client.add_documents(collection="collection_abc123", ...)\n  Inserted: 47 vectors ✓' },
+  { id: 'ps4', label: 'Processing query', detail: '→ query: "' + '' + '"\n→ embedding_client.embed(doc_type="query")\n→ vectordb_client.search_by_vector(top_k=5)\n  Top match score: 0.91' },
+  { id: 'ps5', label: 'Building augmented prompt', detail: '→ template_parser.get("rag", "system_prompt")\n→ 5 document chunks injected into prompt\n→ full_prompt length: 1,842 tokens' },
+  { id: 'ps6', label: 'Generating answer', detail: '→ generation_client.generate_response(prompt, chat_history)\n→ Answer: "The project uses RecursiveCharacterTextSplitter with configurable chunk_size and chunk_overlap parameters..."\n  Tokens used: 287 ✓' },
+];
+
+async function runSimulation() {
+  const query = document.getElementById('sim-query').value || 'What is the chunking strategy?';
+  simSteps[4].detail = simSteps[4].detail.replace(/".*?"/, `"${query}"`);
+
+  const btn = document.getElementById('sim-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Running...';
+
+  const log = document.getElementById('sim-log');
+  log.innerHTML = '';
+
+  document.querySelectorAll('.pipe-step').forEach(s => { s.classList.remove('active'); s.classList.add('idle'); });
+
+  for (let i = 0; i < simSteps.length; i++) {
+    await delay(900);
+    const step = simSteps[i];
+    const el = document.getElementById(step.id);
+    el.classList.remove('idle');
+    el.classList.add('active');
+
+    const entry = document.createElement('div');
+    entry.className = 'sim-entry';
+    entry.textContent = `[Step ${i+1}] ${step.label}\n${step.detail}\n`;
+    log.appendChild(entry);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  await delay(500);
+  btn.disabled = false;
+  btn.textContent = '▶ Run Again';
+}
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// CHUNK TRADEOFF SLIDER
+function updateChunkViz(val) {
+  val = parseInt(val);
+  const labels = ['Very small','Small','Medium-small','Medium','Medium','Medium-large','Large','Large','Very large','Very large'];
+  document.getElementById('chunk-val').textContent = labels[val-1] || 'Medium';
+  document.getElementById('tr-precision').style.width = Math.max(10, 100 - val * 8) + '%';
+  document.getElementById('tr-coverage').style.width = Math.min(95, val * 9) + '%';
+  document.getElementById('tr-speed').style.width = Math.max(20, 100 - val * 6) + '%';
+  document.getElementById('tr-cost').style.width = Math.min(95, val * 9) + '%';
+}
+
+// QUIZ
+function answer(qid, btn, correct, msg) {
+  const item = document.getElementById(qid);
+  if (item.dataset.done) return;
+  item.dataset.done = '1';
+
+  item.querySelectorAll('.quiz-opt').forEach(b => b.disabled = true);
+  btn.classList.add(correct ? 'correct' : 'wrong');
+
+  const fb = document.getElementById(qid + '-fb');
+  fb.textContent = (correct ? '✓ ' : '✗ ') + msg;
+  fb.className = 'quiz-feedback show ' + (correct ? 'ok' : 'no');
+}
+
+// HINTS
+function toggleHint(btn) {
+  const box = btn.nextElementSibling;
+  const show = box.classList.toggle('show');
+  btn.textContent = show ? 'Hide hint' : 'Show hint';
+}
+</script>
+</body>
+</html>

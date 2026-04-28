@@ -1,0 +1,14 @@
+version: "3.8"
+
+services:
+  #MongoDB
+  mongodb:
+    #TODO: Configure MongoDB image, ports, and volumes
+    
+  #FastAPI Application
+  app:
+    #TODO: Configure FastAPI build, ports, and network dependencies
+
+networks:
+  rag_network:
+    driver: bridge
