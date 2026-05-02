@@ -7,20 +7,20 @@ class Settings(BaseSettings):
     APP_NAME: str = "Local-RAG"
     APP_VERSION: str = "0.1.0"
 
-    #FileHandling
+    # File Handling
     FILE_ALLOWED_EXTENSIONS: list = [
         "text/plain",
         "application/pdf",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ]
     FILE_MAX_SIZE_MB: int = 5
-    FILE_CHUNK_SIZE: int = 1024*1024  #max 5 chunks per file
+    FILE_CHUNK_SIZE: int = 1048576  # 1 MB max bytes per read chunk
 
     #MongoDB
-    MONGODB_URI: str = "mongodb://admin:admin@localhost:27017"
+    MONGODB_URI: str = "mongodb://localhost:27017"
     MONGODB_DB_NAME: str = "Local-RAG"
 
-    #Generation / LLM (TODO: configure when ready)
+    # Generation LLM TODO configure when ready
     #OPENAI_API_KEY: str = ""
     #OPENAI_API_BASE: str = ""
     #GENERATION_MODEL: str = ""
