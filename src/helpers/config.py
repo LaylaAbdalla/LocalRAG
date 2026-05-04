@@ -20,10 +20,10 @@ class Settings(BaseSettings):
     MONGODB_URI: str = "mongodb://localhost:27017"
     MONGODB_DB_NAME: str = "Local-RAG"
 
-    # Generation LLM TODO configure when ready
-    #OPENAI_API_KEY: str = ""
-    #OPENAI_API_BASE: str = ""
-    #GENERATION_MODEL: str = ""
+    # Generation LLM
+    OPENAI_API_KEY: str = ""
+    OPENAI_API_BASE: str = ""
+    GENERATE_RESPONSE_MODEL: str = ""
 
     #Embeddings
     EMBEDDINGS_MODEL: str = "BAAI/bge-small-en"

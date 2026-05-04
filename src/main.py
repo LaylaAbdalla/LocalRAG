@@ -11,6 +11,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from helpers.config import get_settings
 from routes.base import base_router
 from routes.data import data_router
+from routes.nlp import nlp_router
 
 
 @asynccontextmanager
@@ -46,3 +47,4 @@ app = FastAPI(
 # Register Routers
 app.include_router(base_router)
 app.include_router(data_router)
+app.include_router(nlp_router)

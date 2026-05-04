@@ -27,6 +27,7 @@ docker/mongodb/
 #assets
 src/assets/files/
 src/assets/db/
+src/chroma_data/
 
 #OS
 .DS_Store
