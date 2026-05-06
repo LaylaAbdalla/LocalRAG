@@ -1,14 +1,49 @@
 version: "3.8"
 
 services:
-  #MongoDB
+  # MongoDB
   mongodb:
-    #TODO: Configure MongoDB image, ports, and volumes
-    
-  #FastAPI Application
+    image: mongo:latest
+    container_name: localrag_mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - rag_network
+
+  # FastAPI Application
   app:
-    #TODO: Configure FastAPI build, ports, and network dependencies
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: localrag_app
+    ports:
+      - "5000:5000"
+    environment:
+      - MONGODB_URI=mongodb://admin:admin@mongodb:27017
+      - MONGODB_DB_NAME=Local-RAG
+      # Use host.docker.internal to reach Ollama on the host machine
+      - OPENAI_API_BASE=http://host.docker.internal:11434/api
+      - GENERATE_RESPONSE_MODEL=gemma
+      - VECTOR_DB_PATH=chroma_data
+      - EMBEDDINGS_MODEL=BAAI/bge-small-en
+    volumes:
+      - ./src/assets:/app/src/assets
+      - ./src/chroma_data:/app/src/chroma_data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - mongodb
+    networks:
+      - rag_network
 
 networks:
   rag_network:
     driver: bridge
+
+volumes:
+  mongodb_data:
