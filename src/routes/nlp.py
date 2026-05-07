@@ -6,6 +6,7 @@ from controllers.NlpController import NlpController
 from stores.vectordb.VectorDBFactory import VectorDBFactory
 from stores.llm.LLMFactory import LLMFactory
 from stores.llm.tempelate.template_parser import TemplateParser
+from helpers.config import get_settings
 
 nlp_router = APIRouter(
     prefix="/api/nlp/index",
@@ -13,9 +14,10 @@ nlp_router = APIRouter(
 )
 
 # Initialize dependencies. In a real app this might use FastAPI Depends.
-vectordb_client = VectorDBFactory.create(provider_type="chromadb")
-generation_client = LLMFactory.create(provider_type="ollama")
-embedding_client = LLMFactory.create(provider_type="local_bge")
+settings = get_settings()
+vectordb_client = VectorDBFactory.create(provider_type=settings.VECTOR_DB_PROVIDER)
+generation_client = LLMFactory.create(provider_type=settings.LLM_PROVIDER)
+embedding_client = LLMFactory.create(provider_type=settings.EMBEDDING_PROVIDER)
 template_parser = TemplateParser()
 
 nlp_controller = NlpController(

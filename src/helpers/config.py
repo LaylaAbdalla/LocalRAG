@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     MONGODB_URI: str = "mongodb://localhost:27017"
     MONGODB_DB_NAME: str = "Local-RAG"
 
+    # Providers
+    LLM_PROVIDER: str = "ollama"
+    EMBEDDING_PROVIDER: str = "local_bge"
+    VECTOR_DB_PROVIDER: str = "chromadb"
+
     # Generation LLM
     OPENAI_API_KEY: str = ""
     OPENAI_API_BASE: str = ""
