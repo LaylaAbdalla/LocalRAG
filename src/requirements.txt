@@ -30,7 +30,7 @@ openai==1.82.0
 sentence-transformers==4.1.0
 
 #Arabic NLP
-camel-tools==1.5.5
+# camel-tools==1.5.5 
 
 #Frontend UI
 streamlit==1.45.1
