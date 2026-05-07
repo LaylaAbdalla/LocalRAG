@@ -28,6 +28,7 @@ chromadb==1.0.7
 #LLM & Embeddings
 openai==1.82.0
 sentence-transformers==4.1.0
+tf-keras
 
 #Arabic NLP
 # camel-tools==1.5.5 
