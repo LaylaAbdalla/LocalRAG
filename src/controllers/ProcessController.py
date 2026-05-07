@@ -90,7 +90,10 @@ class ProcessController(BaseController):
         if isinstance(loader, list):
             return loader
 
-        return loader.load()
+        try:
+            return loader.load()
+        except FileNotFoundError:
+            return None
 
     # Chunking
 
