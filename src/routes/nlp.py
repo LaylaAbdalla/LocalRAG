@@ -78,7 +78,8 @@ async def answer_rag(request: Request, project_id: str, payload: AnswerRequest):
         project=project,
         text=payload.text,
         top_k=payload.top_k,
-        lang=payload.lang
+        lang=payload.lang,
+        model=payload.model
     )
     
     if not answer:

@@ -72,7 +72,10 @@ class NlpController(BaseController):
         results = self.vectordb_client.search_by_vector(collection_name, vector, top_k)
         return results
 
-    async def answer_rag_question(self, project: Project, text: str, top_k: int = 5, lang: str = "en"):
+    async def answer_rag_question(self, project: Project, text: str, top_k: int = 5, lang: str = "en", model: str = None):
+        if model:
+            self.generation_client.set_generation_model(model)
+            
         self.template_parser.set_language(lang)
         retrieved_docs = await self.search_by_vector(project, text, top_k)
         

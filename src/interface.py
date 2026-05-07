@@ -69,11 +69,13 @@ with st.sidebar:
 st.header("Query University Data")
 
 query = st.text_input("Ask a question about the university requirements:")
-col1, col2 = st.columns([1, 4])
+col1, col2, col3 = st.columns([1, 2, 2])
 with col1:
     top_k = st.number_input("Context Chunks", value=5, min_value=1, max_value=20)
 with col2:
     lang = st.selectbox("Language", options=["en", "ar"])
+with col3:
+    model = st.selectbox("LLM Model", options=["gemma2:2b", "qwen2.5:1.5b", "phi3:mini"])
 
 if st.button("Generate Answer"):
     if query and project_id:
@@ -81,7 +83,8 @@ if st.button("Generate Answer"):
             payload = {
                 "text": query,
                 "top_k": top_k,
-                "lang": lang
+                "lang": lang,
+                "model": model
             }
             start_time = time.time()
             try:
