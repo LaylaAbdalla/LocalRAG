@@ -1,16 +1,15 @@
 """
-ProcessController Loads uploaded files and splits them into
-overlapping text chunks for downstream embedding and indexing
+ProcessController — loads files and splits them into text chunks.
 
-Supports
-    txt files LangChain TextLoader
-    pdf files LangChain PyMuPDFLoader
-    docx files python docx based loader
-    html files LangChain BSHTMLLoader
+Supported formats: .txt, .pdf, .docx, .html
+All formats go through Arabic text normalization before chunking.
 """
 
 import os
-from langchain_community.document_loaders import TextLoader, PyMuPDFLoader
+import re
+import unicodedata
+import chardet
+from langchain_community.document_loaders import TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 
@@ -19,78 +18,46 @@ from controllers.FileController import FileController
 
 
 class ProcessController(BaseController):
-    """
-    Handles the second stage of the ingestion pipeline:
-    1. Loading raw file content into LangChain Document objects.
-    2. Splitting those documents into overlapping chunks using
-       RecursiveCharacterTextSplitter.
-    """
+    """Loads files into Documents and splits them into chunks."""
 
     def __init__(self, project_id: str):
-        """
-        Args:
-            project_id: the project folder name under assets/files/.
-        """
         super().__init__()
-
-        # Resolve the project's file directory
         file_controller = FileController()
         self.project_path = file_controller.get_file_path(project_id)
-
-    # File extension detection
 
     @staticmethod
     def get_file_extension(file_name: str) -> str:
         """Return the lowercase file extension (e.g. '.pdf')."""
         return os.path.splitext(file_name)[-1].lower()
 
-    # Loader factory picks the right LangChain loader by extension
-
     def get_file_loader(self, file_name: str):
-        """
-        Return the appropriate LangChain document loader for a file.
-
-        Args:
-            file_name: name of the file (within the project directory).
-
-        Returns:
-            A loader instance, or None if the extension is unsupported.
-        """
+        """Pick the right loader based on file extension."""
         file_path = os.path.join(self.project_path, file_name)
         ext = self.get_file_extension(file_name)
 
         if ext == ".txt":
-            return TextLoader(file_path, encoding="utf-8")
+            detected = self._detect_encoding(file_path)
+            return TextLoader(file_path, encoding=detected)
 
         if ext == ".html":
             return self._load_html(file_path)
 
         if ext == ".pdf":
-            return PyMuPDFLoader(file_path)
+            return self._load_pdf(file_path)
 
         if ext == ".docx":
             return self._load_docx(file_path)
 
         return None
 
-    # Content loading
-
     def get_file_content(self, file_name: str) -> list[Document] | None:
-        """
-        Load a file and return its content as LangChain Documents.
-
-        Args:
-            file_name: name of the file in the project directory.
-
-        Returns:
-            List of Document objects, or None if loader unavailable.
-        """
+        """Load a file and return its content as Documents."""
         loader = self.get_file_loader(file_name)
 
         if loader is None:
             return None
 
-        # .docx returns documents directly (no .load())
+        # Custom loaders return a list directly, TextLoader needs .load()
         if isinstance(loader, list):
             return loader
 
@@ -99,8 +66,6 @@ class ProcessController(BaseController):
         except FileNotFoundError:
             return None
 
-    # Chunking
-
     def process_files(
         self,
         file_content: list[Document],
@@ -108,30 +73,15 @@ class ProcessController(BaseController):
         chunk_size: int = 100,
         overlap: int = 20,
     ) -> list[Document]:
-        """
-        Split loaded documents into overlapping text chunks.
-
-        Uses RecursiveCharacterTextSplitter which tries to split on
-        paragraph breaks sentence endings word boundaries characters
-        preserving semantic coherence as much as possible
-
-        Args:
-            file_content : list of LangChain Document objects from a loader.
-            file_name    : original filename (added to chunk metadata).
-            chunk_size   : maximum number of characters per chunk.
-            overlap      : number of characters shared between consecutive chunks.
-
-        Returns:
-            List of chunked Document objects with metadata.
-        """
+        """Normalize text, then split into overlapping chunks."""
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size,
             chunk_overlap=overlap,
             length_function=len,
         )
 
-        # Inject source filename into each document's metadata
         for doc in file_content:
+            doc.page_content = self._normalize_arabic_text(doc.page_content)
             doc.metadata = doc.metadata or {}
             doc.metadata["source_file"] = file_name
 
@@ -142,52 +92,131 @@ class ProcessController(BaseController):
 
         return chunks
 
-    # Private helpers
+    # --- Loaders ---
+
+    @staticmethod
+    def _load_pdf(file_path: str) -> list[Document]:
+        """Load PDF using PyMuPDF. sort=True fixes RTL Arabic text order."""
+        import pymupdf
+
+        pages = []
+        with pymupdf.open(file_path) as pdf_doc:
+            for page_num, page in enumerate(pdf_doc):
+                text = page.get_text("text", sort=True)
+                if text.strip():
+                    pages.append(
+                        Document(
+                            page_content=text,
+                            metadata={
+                                "source": file_path,
+                                "page": page_num + 1,
+                            },
+                        )
+                    )
+        return pages
 
     @staticmethod
     def _load_docx(file_path: str) -> list[Document]:
-        """
-        Load a .docx file using python-docx and return as Documents.
-
-        Each paragraph becomes part of the document text.
-        """
+        """Load DOCX — extracts paragraphs, tables, headers, and footers."""
         from docx import Document as DocxDocument
 
         docx_doc = DocxDocument(file_path)
-        full_text = "\n".join(
-            para.text for para in docx_doc.paragraphs if para.text.strip()
-        )
+        parts = []
+
+        # Paragraphs
+        for para in docx_doc.paragraphs:
+            if para.text.strip():
+                parts.append(para.text)
+
+        # Table cells
+        for table in docx_doc.tables:
+            for row in table.rows:
+                row_texts = [cell.text.strip() for cell in row.cells if cell.text.strip()]
+                if row_texts:
+                    parts.append(" | ".join(row_texts))
+
+        # Headers and footers
+        for section in docx_doc.sections:
+            for header_para in section.header.paragraphs:
+                if header_para.text.strip():
+                    parts.append(header_para.text)
+            for footer_para in section.footer.paragraphs:
+                if footer_para.text.strip():
+                    parts.append(footer_para.text)
 
         return [
             Document(
-                page_content=full_text,
+                page_content="\n".join(parts),
                 metadata={"source": file_path},
             )
         ]
 
-    @staticmethod
-    def _load_html(file_path: str) -> list[Document]:
-        """
-        Load an .html file and strip out noise tags (script, style, etc.)
-        before extracting the text.
-        """
+    def _load_html(self, file_path: str) -> list[Document]:
+        """Load HTML — only extracts text from content tags (p, h1-h6, li, etc.)."""
         from bs4 import BeautifulSoup
 
-        with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+        detected = self._detect_encoding(file_path)
+        with open(file_path, "r", encoding=detected, errors="replace") as f:
             soup = BeautifulSoup(f, "html.parser")
 
-        # Strip out noisy tags
-        for element in soup(["script", "style", "nav", "header", "footer"]):
-            element.extract()
+        content_tags = ["p", "h1", "h2", "h3", "h4", "h5", "h6",
+                        "li", "td", "th", "blockquote"]
 
-        # Extract text separated by newlines, strip whitespace
-        text = soup.get_text(separator="\n", strip=True)
+        paragraphs = []
+        for tag in soup.find_all(content_tags):
+            text = tag.get_text(separator=" ", strip=True)
+            if text and len(text) > 1:
+                paragraphs.append(text)
 
         title = str(soup.title.string) if soup.title else ""
 
         return [
             Document(
-                page_content=text,
+                page_content="\n".join(paragraphs),
                 metadata={"source": file_path, "title": title},
             )
         ]
+
+    # --- Helpers ---
+
+    @staticmethod
+    def _detect_encoding(file_path: str) -> str:
+        """Auto-detect file encoding. Falls back to utf-8 if unsure."""
+        with open(file_path, "rb") as f:
+            raw = f.read()
+        result = chardet.detect(raw)
+        encoding = result.get("encoding") or "utf-8"
+        confidence = result.get("confidence") or 0
+
+        if confidence < 0.5:
+            encoding = "utf-8"
+
+        return encoding
+
+    @staticmethod
+    def _normalize_arabic_text(text: str) -> str:
+        """
+        Clean up Arabic text:
+        1. NFKC normalize — converts special ligature forms (e.g. ﻻ)
+           back to standard Arabic letters (e.g. لا). PDFs often store
+           Arabic using these visual forms instead of real characters.
+        2. Strip diacritics (tashkeel) and tatweel
+        3. Normalize alef variants (أ إ آ -> ا)
+        4. Collapse whitespace
+        """
+        if not text:
+            return text
+
+        # Convert visual/ligature forms to standard Arabic characters
+        text = unicodedata.normalize("NFKC", text)
+
+        # Remove diacritics (harakat) and tatweel (stretching)
+        text = re.sub(r"[\u064B-\u065F\u0670\u0640]", "", text)
+
+        # Normalize alef variants to plain alef
+        text = re.sub(r"[\u0622\u0623\u0625]", "\u0627", text)
+
+        # Collapse whitespace
+        text = re.sub(r"\s+", " ", text)
+
+        return text.strip()
