@@ -34,8 +34,9 @@ with st.sidebar:
             st.warning("Please provide a Project ID and select a file.")
 
     st.subheader("2. Process Document")
-    chunk_size = st.number_input("Chunk Size", value=500, step=100)
-    overlap = st.number_input("Chunk Overlap", value=50, step=10)
+    use_semantic_chunking = st.checkbox("Use Semantic Chunking", value=True, help="Splits document by semantic meaning instead of character count. Slower but better context retention.")
+    chunk_size = st.number_input("Chunk Size (for standard chunking)", value=500, step=100, disabled=use_semantic_chunking)
+    overlap = st.number_input("Chunk Overlap (for standard chunking)", value=50, step=10, disabled=use_semantic_chunking)
     
     if st.button("Process Data"):
         if uploaded_file and project_id:
@@ -44,7 +45,8 @@ with st.sidebar:
                     "file_name": uploaded_file.name,
                     "chunk_size": chunk_size,
                     "overlap": overlap,
-                    "do_reset": 0
+                    "do_reset": 0,
+                    "use_semantic_chunking": use_semantic_chunking
                 }
                 response = requests.post(f"{API_BASE_URL}/data/process/{project_id}", json=payload)
                 if response.status_code == 200:

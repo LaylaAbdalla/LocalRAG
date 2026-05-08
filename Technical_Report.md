@@ -23,7 +23,8 @@ LocalRAG is a robust, privacy-first Retrieval-Augmented Generation (RAG) system 
       "file_name": "example.pdf",
       "chunk_size": 500,
       "overlap": 50,
-      "do_reset": 0
+      "do_reset": 0,
+      "use_semantic_chunking": true
     }
     ```
   - **Response**: `200 OK` with `chunks_count`.
@@ -69,7 +70,10 @@ LocalRAG is a robust, privacy-first Retrieval-Augmented Generation (RAG) system 
 
 ## 4. Embedding Model & Chunking Strategy
 - **Embedding Model**: The application utilizes `BAAI/bge-small-en` (configurable via `.env`) and supports localized models via the LLMFactory pattern. This choice is justified due to its balance between processing speed, low memory footprint, and high accuracy for semantic representation on consumer-grade hardware.it works  for English and Arabic. but for better results in Arabic and multilingual contexts, it is recommended to replace this with a multilingual variant integrates seamlessly into the `local_bge` provider.
-- **Chunking Strategy**: The default chunking strategy utilizes a `chunk_size` of 500 characters with an `overlap` of 50 characters (as defined in the Streamlit interface). A chunk size of 500 characters is optimal for documents like university handbooks and program guidelines, as it is large enough to encapsulate a complete academic policy, course description, or set of requirements in a single chunk without diluting the semantic focus. Meanwhile, the 10% sliding window overlap ensures that important contextual links between paragraphs and sentences are not severed across chunk boundaries. Importantly, the **chunk size**, **chunk overlap**, and the **top K** (number of retrieved context chunks) are fully customizable in real-time via the User Interface and the API to dynamically accommodate varying document types and LLM context window limits.
+- **Chunking Strategy**: The system supports two chunking approaches, dynamically selectable via the User Interface and the API:
+  - **Semantic Chunking (Default)**: Utilizes LangChain's `SemanticChunker` paired with a multilingual HuggingFace embedding model (`paraphrase-multilingual-MiniLM-L12-v2`). This approach splits the document into sentences and uses embeddings to group them by semantic meaning. By splitting the text only when similarity drops (a semantic breakpoint), it prevents cutting thoughts or ideas in half, which vastly improves context quality for complex Arabic literature.
+  - **Standard Chunking (Fallback)**: When semantic chunking is disabled, the system utilizes a `RecursiveCharacterTextSplitter`. The default strategy uses a `chunk_size` of 500 characters with an `overlap` of 50 characters. A chunk size of 500 characters is optimal for documents like university handbooks, as it is large enough to encapsulate a complete academic policy without diluting the semantic focus. Meanwhile, the 10% sliding window overlap ensures contextual links are not severed across chunk boundaries.
+  Importantly, the chunking method, **chunk size**, **chunk overlap**, and the **top K** (number of retrieved context chunks) are fully customizable in real-time to dynamically accommodate varying document types and LLM context window limits.
 
 ## 5. Arabic Language Processing
 The pipeline implements robust preprocessing mechanisms to handle the complexities of Arabic text extraction and generation natively:
