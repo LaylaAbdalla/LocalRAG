@@ -5,7 +5,7 @@ LocalRAG is a robust, privacy-first Retrieval-Augmented Generation (RAG) system 
 
 ## 2. System Architecture
 
-![System Architecture Diagram](./System%20Architecture%20Diagram.png)
+![System Architecture Diagram](./map.jpeg)
 
 ## 3. API Documentation
 
