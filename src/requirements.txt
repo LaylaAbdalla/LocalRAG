@@ -18,6 +18,7 @@ langchain-text-splitters==0.3.8
 pymupdf==1.25.5
 python-docx==1.1.2
 beautifulsoup4==4.13.4
+chardet==5.2.0
 
 #MongoDB (Async Driver)
 motor==3.7.0
