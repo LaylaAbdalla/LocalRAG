@@ -8,7 +8,7 @@ API_BASE_URL = "http://localhost:8000/api"
 st.set_page_config(page_title="Know Your University", layout="wide")
 
 st.title("Know Your University")
-st.markdown("Upload university program guidelines and query them to understand requirements and policies.")
+st.markdown("Upload university documents and query them to understand requirement, guidelines, policies, etc.")
 
 # Sidebar for Project and Data Processing
 with st.sidebar:
@@ -16,7 +16,7 @@ with st.sidebar:
     project_id = st.text_input("University Identifier (Project ID)", value="demo_university")
     
     st.subheader("1. Upload Document")
-    uploaded_file = st.file_uploader("Upload University Syllabus (PDF, TXT, DOCX, HTML)", type=["pdf", "txt", "docx", "html"])
+    uploaded_file = st.file_uploader("Upload University document (PDF, TXT, DOCX, HTML)", type=["pdf", "txt", "docx", "html"])
     
     if st.button("Upload File"):
         if uploaded_file and project_id:
@@ -68,10 +68,10 @@ with st.sidebar:
 # Main Chat Interface
 st.header("Query University Data")
 
-query = st.text_input("Ask a question about the university requirements:")
+query = st.text_input("Ask a question about the university documents:")
 col1, col2, col3 = st.columns([1, 2, 2])
 with col1:
-    top_k = st.number_input("Context Chunks", value=5, min_value=1, max_value=20)
+    top_k = st.number_input("Top-K Context Chunks", value=5, min_value=1, max_value=20)
 with col2:
     lang = st.selectbox("Language", options=["en", "ar"])
 with col3:
