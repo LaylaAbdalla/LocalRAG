@@ -13,7 +13,7 @@ class Settings(BaseSettings):
         "application/pdf",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ]
-    FILE_MAX_SIZE_MB: int = 5
+    FILE_MAX_SIZE_MB: int = 200
     FILE_CHUNK_SIZE: int = 1048576  # 1 MB max bytes per read chunk
 
     #MongoDB
