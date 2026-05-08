@@ -120,7 +120,7 @@ async def process_data(
             content={
                 "error_msg": (
                     f"Unsupported or missing file: '{process_request.file_name}'. "
-                    f"Supported formats: .txt, .pdf, .docx"
+                    f"Supported formats: .txt, .pdf, .docx, .html"
                 )
             },
         )

@@ -6,6 +6,7 @@ Supports
     txt files LangChain TextLoader
     pdf files LangChain PyMuPDFLoader
     docx files python docx based loader
+    html files LangChain BSHTMLLoader
 """
 
 import os
@@ -60,6 +61,9 @@ class ProcessController(BaseController):
 
         if ext == ".txt":
             return TextLoader(file_path, encoding="utf-8")
+
+        if ext == ".html":
+            return self._load_html(file_path)
 
         if ext == ".pdf":
             return PyMuPDFLoader(file_path)
@@ -158,5 +162,32 @@ class ProcessController(BaseController):
             Document(
                 page_content=full_text,
                 metadata={"source": file_path},
+            )
+        ]
+
+    @staticmethod
+    def _load_html(file_path: str) -> list[Document]:
+        """
+        Load an .html file and strip out noise tags (script, style, etc.)
+        before extracting the text.
+        """
+        from bs4 import BeautifulSoup
+
+        with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+            soup = BeautifulSoup(f, "html.parser")
+
+        # Strip out noisy tags
+        for element in soup(["script", "style", "nav", "header", "footer"]):
+            element.extract()
+
+        # Extract text separated by newlines, strip whitespace
+        text = soup.get_text(separator="\n", strip=True)
+
+        title = str(soup.title.string) if soup.title else ""
+
+        return [
+            Document(
+                page_content=text,
+                metadata={"source": file_path, "title": title},
             )
         ]

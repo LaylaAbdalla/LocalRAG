@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     # File Handling
     FILE_ALLOWED_EXTENSIONS: list = [
         "text/plain",
+        "text/html",
         "application/pdf",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ]

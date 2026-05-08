@@ -16,7 +16,7 @@ with st.sidebar:
     project_id = st.text_input("University Identifier (Project ID)", value="demo_university")
     
     st.subheader("1. Upload Document")
-    uploaded_file = st.file_uploader("Upload University Syllabus (PDF, TXT, DOCX)", type=["pdf", "txt", "docx"])
+    uploaded_file = st.file_uploader("Upload University Syllabus (PDF, TXT, DOCX, HTML)", type=["pdf", "txt", "docx", "html"])
     
     if st.button("Upload File"):
         if uploaded_file and project_id:
