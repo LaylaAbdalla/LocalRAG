@@ -45,6 +45,10 @@ class OllamaProvider(LLMInterface):
                 data = response.json()
                 return data.get("message", {}).get("content")
                 
+        except httpx.HTTPStatusError as e:
+            print(f"Ollama Generation Error: {e}")
+            print(f"Response details: {e.response.text}")
+            return None
         except Exception as e:
             print(f"Ollama Generation Error: {e}")
             return None
