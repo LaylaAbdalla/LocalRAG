@@ -4,6 +4,10 @@ Creates the FastAPI app, connects to MongoDB on startup,
 and registers all route modules.
 """
 
+import os
+os.environ["USE_TF"] = "0"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from motor.motor_asyncio import AsyncIOMotorClient
