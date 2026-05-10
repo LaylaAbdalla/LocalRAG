@@ -141,7 +141,6 @@ docker-compose ps
 - **API & Interactive Docs (Swagger UI)**: [http://localhost:5000/docs](http://localhost:5000/docs)
 - **MongoDB**: accessible on `localhost:27017` (credentials: `admin` / `admin`)
 
-> **Note**: The Streamlit UI is not containerized in this setup. To run it alongside Docker, open a separate terminal and run `streamlit run src/interface.py` pointing it at `http://localhost:5000` as the backend.
 
 ### Persistent Data
 
