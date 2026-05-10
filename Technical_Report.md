@@ -89,17 +89,83 @@ The system was validated using an Arabic query via the UI:
   - تطوير البحث العلمي: لإعداد الطلاب للبحث العلمي والعمل في مجال البحث.
 - **Result**: The response was generated accurately in 6.28 seconds, demonstrating successful extraction, normalization, retrieval, and coherent text generation in Arabic.
 
+
 ## 7. Docker Deployment Instructions
 
-*Placeholder instructions - Pending implementation by the Mai and Nada.*
+The project is fully containerized using Docker Compose, orchestrating two services: the **FastAPI application** and a **MongoDB** instance, connected over a shared bridge network.
+
+### Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/) installed on your machine.
+- [Ollama](https://ollama.com/) installed and running **on the host machine** (not inside Docker), with your desired model pulled:
+  ```bash
+  ollama pull gemma
+  ```
+  > The application container reaches Ollama via `host.docker.internal`, which is automatically mapped to the host gateway.
+
+### Services Overview
+
+| Service | Container Name | Host Port | Description |
+|---|---|---|---|
+| `mongodb` | `localrag_mongodb` | `27017` | MongoDB instance for document metadata |
+| `app` | `localrag_app` | `5000` | FastAPI backend + ChromaDB vector store |
+
+### Step 1: Build the Application Image
+
+From the project root directory (where `docker-compose.yml` lives), build the FastAPI app image:
 
 ```bash
-# TODO: Team to fill in docker build and run steps.
-# Examples:
-# docker-compose up -d
-# docker build -t localrag .
-# docker run -p 8000:8000 localrag
+docker build -t localrag .
 ```
+
+### Step 2: Start All Services
+
+Launch MongoDB and the application together in detached mode:
+
+```bash
+docker-compose up -d
+```
+
+Docker Compose will:
+1. Pull the `mongo:latest` image and start the MongoDB container.
+2. Start the `localrag_app` container, which mounts `./src/assets` and `./src/chroma_data` for persistent storage.
+
+To verify both containers are running:
+
+```bash
+docker-compose ps
+```
+
+### Step 3: Access the Application
+
+- **API & Interactive Docs (Swagger UI)**: [http://localhost:5000/docs](http://localhost:5000/docs)
+- **MongoDB**: accessible on `localhost:27017` (credentials: `admin` / `admin`)
+
+> **Note**: The Streamlit UI is not containerized in this setup. To run it alongside Docker, open a separate terminal and run `streamlit run src/interface.py` pointing it at `http://localhost:5000` as the backend.
+
+### Persistent Data
+
+Two named/bind volumes ensure data survives container restarts:
+
+| Volume | Purpose |
+|---|---|
+| `mongodb_data` (named) | MongoDB documents and metadata |
+| `./src/assets` (bind mount) | Uploaded source files |
+| `./src/chroma_data` (bind mount) | ChromaDB vector index |
+
+named volume — Docker manages the storage location for you (mongodb_data)
+bind mount — you explicitly specify the folder on your machine (./src/...)
+
+### Stopping & Cleaning Up
+
+```bash
+# Stop containers (data is preserved)
+docker-compose down
+
+# Stop and remove all volumes (deletes MongoDB data and ChromaDB index)
+docker-compose down -v
+```
+
 
 ## 8. Local Execution Instructions
 
