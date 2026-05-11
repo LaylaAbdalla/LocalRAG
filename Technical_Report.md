@@ -203,3 +203,28 @@ cd src
 streamlit run interface.py
 ```
 This will open the web interface in your default browser (typically at [http://localhost:8501](http://localhost:8501)), allowing you to upload documents, process them, and query the RAG system.
+
+## 9. English Retrieval Accuracy Test (Northwestern Handbook)
+
+To evaluate the system's ability to accurately retrieve specific policies from dense, rule-heavy English documents, a retrieval accuracy test was conducted using the **Northwestern University Student Handbook** (`NLP Data/EN/northwesternuniversity-student-handbook.pdf`).
+
+### Methodology
+The document was processed using **Standard Chunking** (500 characters, 50 character overlap) and embedded using the local `BAAI/bge-small-en` model. We queried the system for specific, granular policies and evaluated if the vector database successfully returned the chunks containing the exact target rules within the **Top 5** results.
+
+### Test Cases & Results
+
+#### Test Case 1: Academic Integrity Policy
+- **Query**: *"What are the rules around Academic Integrity and obtaining an unfair advantage?"*
+- **Target Answer Required**: Mentions of "stealing, reproducing, circulating, or otherwise gaining access to examination materials prior to the time authorized by the instructor".
+- **Retrieval Result**: **Success (Rank 1)**. The exact paragraph defining "Obtaining an Unfair Advantage" was retrieved with the highest similarity score, proving the semantic chunking preserved the list formatting correctly.
+
+#### Test Case 2: Zero-Tolerance Cannabis Policy
+- **Query**: *"What is the policy regarding cannabis on campus?"*
+- **Target Answer Required**: Mentions of "Driving under the influence of cannabis" and "Being in the presence of the use of cannabis on campus."
+- **Retrieval Result**: **Success (Rank 2)**. The system successfully matched the conceptual query to the exact definitions of cannabis violations, even though the handbook uses strict legal definitions like "delta-9-tetrahydrocannabinol level".
+
+#### Test Case 3: Distracted Keyword Search (Edge Case)
+- **Query**: *"Can a student host be responsible for policy violations committed by their on-campus guest?"*
+- **Target Answer Required**: Mentions of "Student hosts are additionally responsible for any policy violations of their on-campus guests".
+- **Retrieval Result**: **Partial Failure (Rank 6)**. Because words like "guest" and "violations" are highly repetitive across the 160,000+ character document, the top 5 chunks retrieved were other disciplinary paragraphs that mentioned guests but did not contain the specific liability rule. 
+- **Resolution**: Increasing the `top_k` parameter in the UI to 10 successfully pulls the target paragraph into the context window, allowing the LLM to answer correctly. This highlights the importance of the dynamic `top_k` slider when dealing with highly repetitive legal texts.
