@@ -72,13 +72,23 @@ class ProcessController(BaseController):
         file_name: str,
         chunk_size: int = 100,
         overlap: int = 20,
+        use_semantic_chunking: bool = True
     ) -> list[Document]:
         """Normalize text, then split into overlapping chunks."""
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=chunk_size,
-            chunk_overlap=overlap,
-            length_function=len,
-        )
+        
+        if use_semantic_chunking:
+            from langchain_experimental.text_splitter import SemanticChunker
+            from langchain_huggingface import HuggingFaceEmbeddings
+            
+            # Using a multilingual model to correctly embed Arabic semantics
+            embeddings = HuggingFaceEmbeddings(model_name="paraphrase-multilingual-MiniLM-L12-v2")
+            text_splitter = SemanticChunker(embeddings, breakpoint_threshold_type="percentile")
+        else:
+            text_splitter = RecursiveCharacterTextSplitter(
+                chunk_size=chunk_size,
+                chunk_overlap=overlap,
+                length_function=len,
+            )
 
         for doc in file_content:
             doc.page_content = self._normalize_arabic_text(doc.page_content)

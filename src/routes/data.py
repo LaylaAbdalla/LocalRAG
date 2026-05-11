@@ -137,6 +137,7 @@ async def process_data(
         file_name=process_request.file_name,
         chunk_size=process_request.chunk_size,
         overlap=process_request.overlap,
+        use_semantic_chunking=process_request.use_semantic_chunking,
     )
 
     if not chunks:

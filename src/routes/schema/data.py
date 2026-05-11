@@ -22,3 +22,4 @@ class RequestProcess(BaseModel):
     chunk_size: int = Field(default=100, ge=10, le=10000)
     overlap: int = Field(default=20, ge=0)
     do_reset: int = Field(default=0, ge=0, le=1)
+    use_semantic_chunking: bool = Field(default=True)
